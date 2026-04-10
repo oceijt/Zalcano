@@ -27,10 +27,7 @@ package com.zalcano;
 import com.google.inject.Provides;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.NPC;
-import net.runelite.api.Player;
-import net.runelite.api.ScriptEvent;
+import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
 import net.runelite.api.widgets.Widget;
@@ -44,6 +41,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Slf4j
 @PluginDescriptor(
@@ -75,7 +73,7 @@ public class ZalcanoPlugin extends Plugin
 	@Getter
 	private int miningHp;
 
-	private List<Player> playersInSight;
+	private List<Player> playersInSight = new ArrayList<>();
 	@Getter
 	private List<Player> playersParticipating = new ArrayList<>();
 
@@ -106,11 +104,9 @@ public class ZalcanoPlugin extends Plugin
 		overlayManager.add(zalcanoOverlay);
 
 		addExcludedWorldPoints();
-
-		playersParticipating = new ArrayList<>();
-		playersInSight = new ArrayList<>(client.getPlayers());
-		// Clear null values
-		while (true) if (!playersInSight.remove(null)) break;
+		if (client.getGameState() == GameState.LOGGED_IN) {
+			playersInSight.addAll(client.getTopLevelWorldView().players().stream().collect(Collectors.toList()));
+		}
 
 		shieldDamageDealt = 0;
 		miningDamageDealt = 0;
@@ -160,6 +156,20 @@ public class ZalcanoPlugin extends Plugin
 		filterPlayersAtGate(playersInSight);
 		updateZalcanoStatus();
 		updateZalcanoHealth();
+	}
+
+	@Subscribe
+	private void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGGED_IN) {
+			//retrack all seen players
+			playersInSight = client.getTopLevelWorldView().players().stream().collect(Collectors.toList());
+			filterPlayersAtGate(playersInSight);
+		} else {
+			// wipe all tracked players when state is anything else
+			playersInSight.clear();
+			playersParticipating.clear();
+		}
 	}
 
 	private void updateZalcanoStatus()
