@@ -30,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.*;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
@@ -104,7 +105,8 @@ public class ZalcanoPlugin extends Plugin
 		overlayManager.add(zalcanoOverlay);
 
 		addExcludedWorldPoints();
-		if (client.getGameState() == GameState.LOGGED_IN) {
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
 			playersInSight.addAll(client.getTopLevelWorldView().players().stream().collect(Collectors.toList()));
 		}
 
@@ -119,22 +121,6 @@ public class ZalcanoPlugin extends Plugin
 	{
 		overlayManager.remove(zalcanoOverlay);
 		log.info("Zalcano plugin stopped");
-	}
-
-	@Subscribe
-	public void onScriptPreFired(ScriptPreFired scriptPreFired) {
-			ScriptEvent event = scriptPreFired.getScriptEvent();
-			if (event != null) {
-				Widget widget = event.getSource();
-				if (widget != null) {
-					if (widget.getId() == hpBarWidgetId) {
-						hpBarHidden = widget.isHidden();
-						if (!hpBarHidden) hpBar = widget;
-					}
-				}
-			}
-
-
 	}
 
 	@Subscribe
@@ -153,6 +139,19 @@ public class ZalcanoPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick gameTick)
 	{
+		Widget npcNameWidget = client.getWidget(InterfaceID.HpbarHud.CREATURE_NAME);
+		if (npcNameWidget == null || !npcNameWidget.getText().equals("Zalcano"))
+		{
+			hpBar = null;
+			return;
+		}
+		Widget hpWidget = client.getWidget(InterfaceID.HpbarHud.HP_BAR_TEXT);
+		if (hpWidget == null)
+		{
+			return;
+		}
+		hpBar = hpWidget;
+		hpBarHidden = hpWidget.isHidden();
 		filterPlayersAtGate(playersInSight);
 		updateZalcanoStatus();
 		updateZalcanoHealth();
@@ -161,11 +160,14 @@ public class ZalcanoPlugin extends Plugin
 	@Subscribe
 	private void onGameStateChanged(GameStateChanged event)
 	{
-		if (event.getGameState() == GameState.LOGGED_IN) {
+		if (event.getGameState() == GameState.LOGGED_IN)
+		{
 			//retrack all seen players
 			playersInSight = client.getTopLevelWorldView().players().stream().collect(Collectors.toList());
 			filterPlayersAtGate(playersInSight);
-		} else {
+		}
+		else
+		{
 			// wipe all tracked players when state is anything else
 			playersInSight.clear();
 			playersParticipating.clear();
@@ -192,7 +194,12 @@ public class ZalcanoPlugin extends Plugin
 		}
 	}
 
-	private void updateZalcanoHealth() {
+	private void updateZalcanoHealth()
+	{
+		if (hpBar == null)
+		{
+			return;
+		}
 		if (!hpBarHidden)
 		{
 			if (zalcanoState == ZalcanoStates.THROWING)
@@ -289,7 +296,8 @@ public class ZalcanoPlugin extends Plugin
 
 	private void filterPlayersAtGate(List<Player> players)
 	{
-		for(Player p : players) {
+		for(Player p : players)
+		{
 			WorldPoint playerLocation = p.getWorldLocation();
 			if (excludedWorldPoints.contains(playerLocation))
 			{
@@ -302,7 +310,8 @@ public class ZalcanoPlugin extends Plugin
 		}
 	}
 
-	private void addExcludedWorldPoints() {
+	private void addExcludedWorldPoints()
+	{
 		int plane = 0;
 		int minExcludedX = 3033;
 		int maxExcludedX = 3034;
